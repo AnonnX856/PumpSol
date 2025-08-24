@@ -29,7 +29,7 @@ const WalletButton: React.FC = () => {
           letter-spacing: 0.1em !important;
           border-radius: 0 !important;
           min-width: 100px !important;
-          height: 48px !important;
+          height: 45px !important;
           padding: 0 16px !important;
           display: flex !important;
           align-items: center !important;

@@ -68,9 +68,9 @@ function App() {
   return (
       <div className="min-h-screen bg-white">
         {/* Navigation */}
-        <nav className="border-b-2 border-black bg-white">
+        <nav className="border-b-2 border-black bg-white max-sm:pb-12 max-sm:pt-3">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16 sm:h-20">
+            <div className="max-sm:flex-col max-sm:gap-3 flex items-center sm:justify-between h-16 sm:h-20">
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-3">
                   <div className="p-0.5 bg-black border-2 border-black">
@@ -91,10 +91,10 @@ function App() {
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center space-x-1 sm:space-x-2 bg-black text-white px-4 py-2 sm:px-5 sm:py-3 h-12 sm:h-12 font-bold text-sm sm:text-sm uppercase tracking-wider hover:bg-white hover:text-black border-2 border-black transition-all duration-300 hover:scale-105 hover:shadow-lg relative overflow-hidden group min-w-[100px] sm:min-w-[120px]"
+                    className="flex justify-center items-center space-x-1 sm:space-x-2 bg-black text-white px-4 py-2 sm:px-5 sm:py-3 h-12 sm:h-12 font-bold text-sm sm:text-sm uppercase tracking-wider hover:bg-white hover:text-black border-2 border-black transition-all duration-300 hover:scale-105 hover:shadow-lg relative overflow-hidden group min-w-[100px] sm:min-w-[120px]"
                   >
                     <div className="absolute inset-0 bg-white transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
-                    <Plus className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 group-hover:rotate-90 transition-transform duration-300" />
+                    <Plus className="w-4 h-4 max-sm:size-6 sm:w-5 sm:h-5 relative z-10 group-hover:rotate-90 transition-transform duration-300" />
                     <span className="relative z-10 hidden sm:inline">Create</span>
                   </button>
                   
