@@ -19,6 +19,21 @@ export interface BondingCurveData {
   complete: boolean;
 }
 
+// export interface BondingCurveData {
+// virtualSolReserves: {
+//     toNumber: () => number;
+//   };
+//   virtualTokenReserves: {
+//     toNumber: () => number;
+//   };
+//   realSolReserves: {
+//     toNumber: () => number;
+//   };
+//   realTokenReserves: BN;
+//   tokenTotalSupply: BN;
+//   complete: boolean;
+// }
+
 export interface LaunchData {
   id: string;
   token: TokenInfo;
