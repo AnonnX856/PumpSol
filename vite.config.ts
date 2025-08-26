@@ -1,7 +1,5 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
-import { Buffer } from 'buffer'
 
 export default defineConfig({
   plugins: [react()],
@@ -12,23 +10,19 @@ export default defineConfig({
   resolve: {
     alias: {
       buffer: 'buffer',
+      process: 'process/browser',
       util: 'util',
     },
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
     include: [
-      'process',
+      'process/browser',
       'buffer',
       'util',
       '@solana/web3.js',
       '@solana/spl-token',
       'bn.js'
     ],
-    esbuildOptions: {
-      plugins: [
-        NodeModulesPolyfillPlugin(),
-      ],
-    },
   },
 });
