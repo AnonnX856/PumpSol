@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
+import { Buffer } from 'buffer'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   define: {
@@ -11,6 +11,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      buffer: 'buffer',
       util: 'util',
     },
   },
@@ -18,6 +19,7 @@ export default defineConfig({
     exclude: ['lucide-react'],
     include: [
       'process',
+      'buffer',
       'util',
       '@solana/web3.js',
       '@solana/spl-token',
