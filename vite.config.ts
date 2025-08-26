@@ -23,6 +23,16 @@ export default defineConfig({
       '@solana/web3.js',
       '@solana/spl-token',
       'bn.js'
-    ],
+    ]
   },
+  build: {
+    rollupOptions: {
+      external: [],
+      output: {
+        globals: {
+          buffer: 'Buffer'
+        }
+      }
+    }
+  }
 });
