@@ -1,6 +1,7 @@
 import React from 'react';
 import { LaunchData } from '../types';
-import { TrendingUp, TrendingDown, Users, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import BN from 'bn.js';
 
 interface LaunchCardProps {
   launch: LaunchData;
@@ -22,6 +23,29 @@ const LaunchCard: React.FC<LaunchCardProps> = ({ launch, onClick }) => {
     if (diffInHours < 24) return `${diffInHours}h ago`;
     return `${Math.floor(diffInHours / 24)}d ago`;
   };
+
+  // Safe calculation of bonding curve progress
+  const calculateProgress = () => {
+    try {
+      const realSol = launch.bondingCurve.realSolReserves;
+      const virtualSol = launch.bondingCurve.virtualSolReserves;
+      
+      // Handle case where virtual reserves might be zero
+      if (virtualSol.isZero()) return 0;
+      
+      // Use BN division for precision, then convert to percentage
+      // Multiply by 10000 to get 2 decimal places, then divide by 100
+      const progressBN = realSol.mul(new BN(10000)).div(virtualSol);
+      const progress = Math.min(progressBN.toNumber() / 100, 100);
+      
+      return isNaN(progress) ? 0 : progress;
+    } catch (error) {
+      console.error('Error calculating progress:', error);
+      return 0;
+    }
+  };
+
+  const progress = calculateProgress();
 
   return (
     <div 
@@ -81,14 +105,14 @@ const LaunchCard: React.FC<LaunchCardProps> = ({ launch, onClick }) => {
         <div 
           className="bg-black group-hover:bg-white h-2 transition-all duration-500"
           style={{ 
-            width: `${Math.min((launch.bondingCurve.realSolReserves.toNumber() / launch.bondingCurve.virtualSolReserves.toNumber()) * 100, 100)}%` 
+            width: `${Math.max(1, Math.min(progress, 100))}%` 
           }}
         ></div>
       </div>
 
       <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 group-hover:text-gray-300 font-medium uppercase tracking-wide">
         <span>Bonding Progress</span>
-        <span>{Math.min(((launch.bondingCurve.realSolReserves.toNumber() / launch.bondingCurve.virtualSolReserves.toNumber()) * 100), 100).toFixed(1)}%</span>
+        <span>{progress.toFixed(1)}%</span>
       </div>
     </div>
   );

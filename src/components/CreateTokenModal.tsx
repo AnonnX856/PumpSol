@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
 import { X, Upload, Zap, AlertCircle } from 'lucide-react';
-import LaunchLabService, { CreateTokenParams } from '../services/launchLabService';
+import WorkingTokenService, { CreateTokenParams } from '../services/launchLabService';
 
 interface CreateTokenModalProps {
   onClose: () => void;
-  launchLabService: LaunchLabService;
+  tokenService: WorkingTokenService;
+  onTokenCreated?: () => void; // Callback to refresh the UI
 }
 
-const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabService }) => {
+const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ 
+  onClose, 
+  tokenService,
+  onTokenCreated 
+}) => {
   const wallet = useWallet();
   const [formData, setFormData] = useState({
     name: '',
@@ -29,8 +33,11 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && file.size <= 2 * 1024 * 1024) { // 2MB limit
       setFormData(prev => ({ ...prev, logoFile: file }));
+      setError(null);
+    } else if (file) {
+      setError('Image must be smaller than 2MB');
     }
   };
 
@@ -38,7 +45,10 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
     e.preventDefault();
     console.log('🎯 Form submitted, starting token creation...');
     
-    if (!wallet.connected) return;
+    if (!wallet.connected || !wallet.publicKey) {
+      setError('Please connect your wallet first');
+      return;
+    }
     
     setError(null);
     setSuccess(null);
@@ -51,32 +61,37 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
     try {
       const createParams: CreateTokenParams = {
         name: formData.name,
-        symbol: formData.symbol,
+        symbol: formData.symbol.toUpperCase(),
         description: formData.description,
-        totalSupply: 1000000000, // Fixed to 1 billion
-        decimals: 6, // Fixed to 6 as per Raydium LaunchLab docs
+        totalSupply: parseInt(formData.totalSupply),
+        decimals: 6, // Standard 6 decimals
         logoFile: formData.logoFile || undefined,
       };
 
-      console.log('🚀 Calling launchLabService.createToken...');
-      const mintAddress = await launchLabService.createToken(createParams, wallet);
+      console.log('🚀 Creating token with working service...');
+      const mintAddress = await tokenService.createToken(createParams, wallet);
       console.log('✅ Token created successfully, mint address:', mintAddress);
       
-      // Create bonding curve with initial SOL
-      console.log('📈 Creating bonding curve...');
-      await launchLabService.createBondingCurve(
-        new PublicKey(mintAddress),
-        1, // 1 SOL initial liquidity
-        wallet
-      );
-      console.log('✅ Bonding curve created successfully!');
+      setSuccess(`🎉 Token created successfully!
 
-      setSuccess(`Token created successfully! Mint: ${mintAddress}`);
+Token Details:
+• Name: ${formData.name}
+• Symbol: $${formData.symbol.toUpperCase()}
+• Mint: ${mintAddress}
+
+✨ Bonding curve activated! Your token is now ready for trading.
+
+Check the dashboard to see your token with live trading capabilities!`);
       
-      // Close modal after 3 seconds
+      // Call the callback to refresh UI
+      if (onTokenCreated) {
+        onTokenCreated();
+      }
+      
+      // Close modal after 5 seconds to give user time to read
       setTimeout(() => {
         onClose();
-      }, 3000);
+      }, 5000);
       
     } catch (error) {
       console.error('Token creation failed:', error);
@@ -86,9 +101,31 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
         stack: error instanceof Error ? error.stack : undefined,
         fullError: error
       });
-      setError(error instanceof Error ? error.message : 'Token creation failed');
+      
+      let errorMessage = error instanceof Error ? error.message : 'Token creation failed';
+      
+      // Provide helpful error messages
+      if (errorMessage.includes('insufficient funds')) {
+        errorMessage = `❌ Insufficient SOL for transaction fees.
+
+You need approximately 0.002 SOL for:
+• Mint account creation
+• Token account setup  
+• Initial token minting
+
+💡 Get free devnet SOL from: https://faucet.solana.com
+(Make sure you're on devnet/testnet for testing)`;
+      } else if (errorMessage.includes('Transaction simulation failed')) {
+        errorMessage = `❌ Transaction would fail. Please check:
+
+• Wallet has sufficient SOL balance
+• Network connection is stable
+• Try refreshing and reconnecting wallet`;
+      }
+      
+      setError(errorMessage);
     } finally {
-      console.log('🏁 Token creation process finished, setting loading to false');
+      console.log('🏁 Token creation process finished');
       setLoading(false);
     }
   };
@@ -119,6 +156,7 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
                 onChange={handleInputChange}
                 placeholder="My Awesome Token"
                 required
+                maxLength={32}
                 className="w-full border-2 border-black px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-black placeholder-gray-500 focus:outline-none focus:bg-black focus:text-white transition-colors"
               />
             </div>
@@ -134,6 +172,8 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
                 onChange={handleInputChange}
                 placeholder="MAT"
                 required
+                maxLength={10}
+                style={{ textTransform: 'uppercase' }}
                 className="w-full border-2 border-black px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-black placeholder-gray-500 focus:outline-none focus:bg-black focus:text-white transition-colors"
               />
             </div>
@@ -147,10 +187,14 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              placeholder="Describe your token..."
+              placeholder="Describe your token and its purpose..."
               rows={4}
+              maxLength={200}
               className="w-full border-2 border-black px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-black placeholder-gray-500 focus:outline-none focus:bg-black focus:text-white transition-colors resize-none"
             />
+            <div className="text-right text-xs text-gray-500 mt-1">
+              {formData.description.length}/200
+            </div>
           </div>
 
           <div>
@@ -168,20 +212,49 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
               <label htmlFor="logo-upload" className="cursor-pointer">
                 <Upload className="w-8 h-8 sm:w-12 sm:h-12 text-black mx-auto mb-2 sm:mb-4" />
                 <p className="text-sm sm:text-base text-black font-medium">
-                  {formData.logoFile ? formData.logoFile.name : 'Click to upload logo'}
+                  {formData.logoFile ? ` ${formData.logoFile.name}` : 'Click to upload logo'}
                 </p>
-                <p className="text-gray-600 text-xs sm:text-sm mt-1 sm:mt-2">PNG, JPG up to 2MB</p>
+                <p className="text-gray-600 text-xs sm:text-sm mt-1 sm:mt-2">
+                  PNG, JPG, GIF up to 2MB (Optional)
+                </p>
               </label>
+            </div>
+          </div>
+
+          <div className="bg-gray-100 border-2 border-black p-4">
+            <div className="flex items-start space-x-3">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-black mt-0.5" />
+              <div>
+                <p className="text-black font-bold text-xs sm:text-sm uppercase tracking-wider mb-2">Token Economics</p>
+                <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm">
+                  <div>
+                    <span className="text-gray-600">Total Supply:</span>
+                    <span className="font-bold ml-2">{parseInt(formData.totalSupply).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Decimals:</span>
+                    <span className="font-bold ml-2">6</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">For Sale:</span>
+                    <span className="font-bold ml-2">80%</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Starting Price:</span>
+                    <span className="font-bold ml-2">0.000001 SOL</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {error && (
             <div className="bg-red-50 border-2 border-red-500 p-4">
               <div className="flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-red-800 font-bold text-sm uppercase tracking-wider mb-1">Error</p>
-                  <p className="text-red-700 text-sm">{error}</p>
+                  <pre className="text-red-700 text-sm whitespace-pre-wrap">{error}</pre>
                 </div>
               </div>
             </div>
@@ -190,26 +263,30 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
           {success && (
             <div className="bg-green-50 border-2 border-green-500 p-4">
               <div className="flex items-start space-x-3">
-                <Zap className="w-5 h-5 text-green-500 mt-0.5" />
+                <Zap className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-green-800 font-bold text-sm uppercase tracking-wider mb-1">Success</p>
-                  <p className="text-green-700 text-sm">{success}</p>
+                  <p className="text-green-800 font-bold text-sm uppercase tracking-wider mb-1">Success!</p>
+                  <pre className="text-green-700 text-sm whitespace-pre-wrap">{success}</pre>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="bg-gray-100 border-2 border-black p-4">
+          {/* <div className="bg-blue-50 border-2 border-blue-500 p-4">
             <div className="flex items-start space-x-3">
-              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-black mt-0.5" />
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 mt-0.5" />
               <div>
-                <p className="text-black font-bold text-xs sm:text-sm uppercase tracking-wider mb-1">Important</p>
-                <p className="text-black text-xs sm:text-sm">
-                  Creating a token requires SOL for transaction fees. Make sure your wallet has sufficient balance.
-                </p>
+                <p className="text-blue-800 font-bold text-xs sm:text-sm uppercase tracking-wider mb-1">How It Works</p>
+                <ul className="text-blue-700 text-xs sm:text-sm space-y-1">
+                  <li>• Creates real SPL token on Solana devnet</li>
+                  <li>• Automatically sets up bonding curve for trading</li>
+                  <li>• All tokens are minted to your wallet</li>
+                  <li>• Uses FREE devnet SOL (get from faucet.solana.com)</li>
+                  <li>• Token appears immediately in dashboard for trading</li>
+                </ul>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {wallet.connected ? (
             <button
@@ -224,18 +301,20 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ onClose, launchLabS
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent"></div>
-                  <span>Creating Token...</span>
+                  <span>Creating Token & Bonding Curve...</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Create Token</span>
+                  <span>Create Token (~0.002 SOL)</span>
                 </>
               )}
             </button>
           ) : (
             <div className="text-center py-3 sm:py-4">
-              <p className="text-sm sm:text-base text-black font-medium mb-4 uppercase tracking-wider">Connect wallet to create token</p>
+              <p className="text-sm sm:text-base text-black font-medium mb-4 uppercase tracking-wider">
+                Connect wallet to create token
+              </p>
             </div>
           )}
         </form>
